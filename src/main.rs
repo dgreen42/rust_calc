@@ -1,56 +1,9 @@
-use std::num::ParseIntError;
-use std::str::from_utf8;
-
-struct Number {
-    content: i32,
-}
-
-struct Modifier {
-    content: String,
-}
-
-struct Item {
-    content: String,
-}
-
-impl Default for Item {
-    fn default() -> Self {
-        Item {content: String::new()}
-    }
-}
-
-struct Term {
-    item: Item,
-    group: Group,
-}
-
-impl Default for Term {
-    fn default() -> Self {
-        Term {item: Item::default(), group: Group::default()}
-    }
-}
-
 
 struct Expression {
-    term: Term,
-    next: Expression,
-}
-
-impl Default for Expression {
-    fn default() -> Self {
-        Expression {term: Term::default(), next: Expression::default()}
-    }
-}
-
-
-struct Group {
-    content: Expression,
-}
-
-impl Default for Group {
-    fn default() -> Self {
-        Group {content: Expression::default()}
-    }
+    lhs: String,
+    opp: String,
+    rhs: String, 
+    priority: i8,
 }
 
 fn is_number(n: &str) -> Option<i32> {
@@ -62,7 +15,7 @@ fn is_number(n: &str) -> Option<i32> {
     return result;
 }
 
-fn is_modifier(m: &str) -> Option<String> {
+fn is_opperation(m: &str) -> Option<String> {
     let result: Option<String> = match m {
         "+" => Some(String::from("+")),
         "-" => Some(String::from("-")),
@@ -73,60 +26,105 @@ fn is_modifier(m: &str) -> Option<String> {
     result
 }
 
-fn number(exp: String) -> (Option<Number>, String) {
-    let mut exp_next = exp.chars();
-    let number: Option<Number> = match is_number(&exp_next.next().unwrap().to_string()) {
-        Some(number) => Some(Number {content:number}),
-        None => None,
+fn evaluate(expr: Expression) -> Option<i32> {
+    let lhs = expr.lhs.parse::<i32>().unwrap();
+    let rhs = expr.rhs.parse::<i32>().unwrap();
+    let result = match expr.opp.as_ref() {
+        "+" => Some(lhs + rhs),
+        "-" => Some(lhs - rhs),
+        "*" => Some(lhs * rhs),
+        "/" => Some(lhs / rhs),
+        _ => None,
     };
-    let mut after = String::new();
-    if number.is_some() {
-        for _idx in 0..exp.len() - 1 {
-            let next_char = exp_next.next();
-            after.push_str(&next_char.unwrap().to_string());
-        }
-    }
-    
-    return (number, after)
+    return result
 }
 
-fn modifier(exp: String) -> (Option<Modifier>, String) {
-    let mut exp_next = exp.chars();
-    let modifier: Option<Modifier> = match is_modifier(&exp_next.next().unwrap().to_string()) {
-        Some(modi) => Some(Modifier {content:modi}),
-        None => None,
-    };
-    let mut after = String::new();
-    if modifier.is_some() {
-        for _idx in 0..exp.len() - 1 {
-            let next_char = exp_next.next();
-            after.push_str(&next_char.unwrap().to_string());
-        }
-    }
+fn expression(exp: String) -> Option<i32> {
+    println!("expression: {}", exp);
+    let mut next = exp.chars();
+    let first_char = next.next().unwrap().to_string();
+    println!("first_char: {}", first_char);
 
-    return (modifier, after)
+    if is_number(&first_char).is_some() {
+        let second_char = next.next().unwrap().to_string();
+        println!("second_char: {}", second_char);
+
+        if is_opperation(&second_char).is_some() {
+            let opp = is_opperation(&second_char).unwrap();
+            let exp_priority = match opp.as_ref() {
+                "+" => 0,
+                "-" => 0,
+                "*" => 1,
+                "/" => 1,
+                _ => 2,
+            };
+
+            if exp_priority == 1 {
+                let third_number = next.next().unwrap().to_string();
+                println!("third_num high priority: {}", third_number);
+
+                if is_number(&third_number).is_some() {
+                    let mut after = String::new();
+                    for _ch in 0..exp.len() - 3 {
+                        let next_num = next.next().unwrap().to_string();
+                        after.push_str(&next_num);
+                    }
+                    if after.is_empty() {
+                        let expr = Expression {lhs: first_char, opp: second_char, rhs: third_number, priority: exp_priority};
+                        return Some(evaluate(expr).unwrap())
+                    } else {
+                        let expr = Expression {lhs: first_char, opp: second_char, rhs: third_number, priority: exp_priority};
+                        let result = format!("{}{}", evaluate(expr).unwrap(), after);
+                        let final_result = expression(result);
+                        return Some(final_result.unwrap())
+                    }
+                } else {
+                    return None
+                }
+
+            } else if exp_priority == 0 {
+                let third_number = next.next().unwrap().to_string();
+                println!("third_num low priority: {}", third_number);
+                let mut after = third_number.clone();
+                for _ch in 0..exp.len() - 3 {
+                    let next_num = next.next().unwrap().to_string();
+                    after.push_str(&next_num);
+                }
+                if after.is_empty() {
+                    println!("after is empty: {}", after);
+                    let expr = Expression {lhs: first_char, opp: second_char, rhs: third_number, priority: exp_priority};
+                    return Some(evaluate(expr).unwrap())
+                } else {
+                    println!("after is not empty: {}", after);
+                    let third_number = expression(after);
+                    println!("third_num after recusion: {}", third_number.unwrap().to_string());
+                    let expr = Expression {lhs: first_char, opp: second_char, rhs: third_number.unwrap().to_string(), priority: exp_priority};
+                    return Some(evaluate(expr).unwrap())
+                }
+
+            } else if exp_priority == 2 {
+                println!("Some how the opperation is not an opperation?");
+                return None
+            } else {
+                return None
+            }
+        } else {
+            return None
+        }
+    } else {
+        return None
+    }
 }
 
-fn expression(exp: String) -> (Option<Expression>, String) {
-    if term(exp).0.is_some() {
-        let trm = term(exp);
-        let after_trm = trm.1;
-        if expression(after_trm).is_some() {
-
-        }
-    }
-}
-
-fn group(exp: String) -> (Option<Group>, String) {}
-
-fn item(exp: String) -> (Option<Item>, String) {}
-
-fn term(exp: String) -> (Option<Term>, String) {}
 
 fn main() {
     let simple: String = String::from("1+2");
+    let simple2: String = String::from("6/2");
+    let simple3: String = String::from("6+2/2");
+    let simple4: String = String::from("6/2+2");
 
-
+    let result = expression(simple4);
+    println!("result: {}", result.unwrap());
 
 }
 
