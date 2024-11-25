@@ -75,6 +75,7 @@ fn expression(exp: String) -> Option<i32> {
                     } else {
                         let expr = Expression {lhs: first_char, opp: second_char, rhs: third_number, priority: exp_priority};
                         let result = format!("{}{}", evaluate(expr).unwrap(), after);
+                        println!("result &: {}", result);
                         let final_result = expression(result);
                         return Some(final_result.unwrap())
                     }
@@ -85,7 +86,7 @@ fn expression(exp: String) -> Option<i32> {
             } else if exp_priority == 0 {
                 let third_number = next.next().unwrap().to_string();
                 println!("third_num low priority: {}", third_number);
-                let mut after = third_number.clone();
+                let mut after = String::new();
                 for _ch in 0..exp.len() - 3 {
                     let next_num = next.next().unwrap().to_string();
                     after.push_str(&next_num);
@@ -118,6 +119,7 @@ fn expression(exp: String) -> Option<i32> {
 
 
 fn main() {
+    std::env::set_var("RUST_BACKTRACE", "1");
     let simple: String = String::from("1+2");
     let simple2: String = String::from("6/2");
     let simple3: String = String::from("6+2/2");
