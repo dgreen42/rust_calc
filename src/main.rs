@@ -40,9 +40,9 @@ fn is_opperation(m: &str) -> Option<String> {
     result
 }
 
-fn evaluate(expr: Expression) -> Option<i32> {
-    let lhs = expr.lhs.parse::<i32>().unwrap();
-    let rhs = expr.rhs.parse::<i32>().unwrap();
+fn evaluate(expr: Expression) -> Option<f32> {
+    let lhs = expr.lhs.parse::<f32>().unwrap();
+    let rhs = expr.rhs.parse::<f32>().unwrap();
     let result = match expr.opp.as_ref() {
         "+" => Some(lhs + rhs),
         "-" => Some(lhs - rhs),
@@ -53,7 +53,7 @@ fn evaluate(expr: Expression) -> Option<i32> {
     return result
 }
 
-fn expression(exp: String) -> Option<i32> {
+fn expression(exp: String) -> Option<f32> {
     println!("expression: {}", exp);
     let mut next = exp.chars();
 
@@ -68,7 +68,8 @@ fn expression(exp: String) -> Option<i32> {
 
     if first_number.contains("(") {
         println!("Paren");
-        first_number = evaluate_paren(&first_number, &next).unwrap();
+        let mut paren_len: usize = 0;
+        (first_number, paren_len) = evaluate_paren(&first_number, &next).unwrap();
         while next.next().unwrap().to_string() != ")" {
             next.next();
         }
@@ -105,7 +106,7 @@ fn expression(exp: String) -> Option<i32> {
     }
 }
 
-fn evaluate_paren(first_char: &str, number_iter: &Chars) -> Option<String> {
+fn evaluate_paren(first_char: &str, number_iter: &Chars) -> Option<(String, usize)> {
     let mut first_char = first_char.to_string();
     first_char.push_str(number_iter.as_str());
     let mut new_expression = String::new();
@@ -120,15 +121,16 @@ fn evaluate_paren(first_char: &str, number_iter: &Chars) -> Option<String> {
     }
 
     println!("Expression in paren: {}", new_expression);
-    let result = expression(new_expression);
-    return Some(result.unwrap().to_string())
+    let result = expression(new_expression.clone());
+    return Some((result.unwrap().to_string(), new_expression.chars().size_hint().1.unwrap()))
 
     }
 
-fn evaluate_high_priority(first_char: String, second_char: String, mut number_iter: Chars, length: usize) -> Option<i32> {
+fn evaluate_high_priority(first_char: String, second_char: String, mut number_iter: Chars, length: usize) -> Option<f32> {
 
-    let expr_lens = get_expression_length(&first_char, &number_iter).unwrap();
+    let mut expr_lens = get_expression_length(&first_char, &number_iter).unwrap();
     let mut third_number = String::new();
+    let mut paren_len: usize = 0;
     for _i in 0..expr_lens.2 {
         third_number.push(number_iter.next().unwrap());
     }
@@ -136,14 +138,17 @@ fn evaluate_high_priority(first_char: String, second_char: String, mut number_it
 
     if third_number.contains("(") {
         println!("Paren");
-        third_number = evaluate_paren(&third_number, &number_iter).unwrap();
+        (third_number, paren_len) = evaluate_paren(&third_number, &number_iter).unwrap();
+        println!("result after paren hp: {}", third_number);
         while number_iter.next().unwrap().to_string() != ")" {
             number_iter.next();
         }
+        expr_lens = get_expression_length(&first_char, &number_iter).unwrap();
     }
 
     if is_number(&third_number).is_some() {
         let mut after = String::new();
+        let length = length - paren_len;
         println!("Full Expression Length: {}", length);
         println!("Expression Length: {}", expr_lens.0);
         for _ch in 0..length - expr_lens.0 as usize {
@@ -169,10 +174,11 @@ fn evaluate_high_priority(first_char: String, second_char: String, mut number_it
     }
 }
 
-fn evaluate_low_priority(first_char: String, second_char: String, mut number_iter: Chars, length: usize) -> Option<i32> {
+fn evaluate_low_priority(first_char: String, second_char: String, mut number_iter: Chars, length: usize) -> Option<f32> {
 
-    let expr_lens = get_expression_length(&first_char, &number_iter).unwrap();
+    let mut expr_lens = get_expression_length(&first_char, &number_iter).unwrap();
     let mut third_number = String::new();
+    let mut paren_len: usize = 0;
     for _i in 0..expr_lens.2 {
         third_number.push(number_iter.next().unwrap());
     }
@@ -180,14 +186,17 @@ fn evaluate_low_priority(first_char: String, second_char: String, mut number_ite
 
     if third_number.contains("(") {
         println!("Paren");
-        third_number = evaluate_paren(&third_number, &number_iter).unwrap();
+        (third_number, paren_len) = evaluate_paren(&third_number, &number_iter).unwrap();
+        println!("result after paren lp: {}", third_number);
         while number_iter.next().unwrap().to_string() != ")" {
             number_iter.next();
         }
+        expr_lens = get_expression_length(&first_char, &number_iter).unwrap();
     }
 
     if is_number(&third_number).is_some() {
         let mut after = String::new();
+        let length = length - paren_len;
         println!("Full Expression Length: {}", length);
         println!("Expression Length: {}", expr_lens.0);
         for _ch in 0..length - expr_lens.0 as usize { // 3 cause that is the size of an expression
@@ -229,10 +238,9 @@ fn get_expression_length(first_char: &str, number_iter: &Chars) -> Option<(i32, 
 
 fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
-    let simple5: String = String::from("22*82-42/22");
+    let simple5: String = String::from("2*8-(4/2)");
 
     let result = expression(simple5);
     println!("result: {}", result.unwrap());
 
 }
-
